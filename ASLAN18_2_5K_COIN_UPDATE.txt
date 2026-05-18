@@ -1,0 +1,5 @@
+ASLAN18.2
+- Aslan18.1 çalışan taban üstüne yazıldı.
+- Sol üst coin 5K gerçek altın Pi Coin görünümüne çevrildi.
+- Çift yüzlü 360 derece kendi etrafında dönüş animasyonu eklendi.
+- Metal kenar, ışık/parlama ve premium efekt eklendi.

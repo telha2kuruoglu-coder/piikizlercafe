@@ -1,0 +1,5 @@
+ASLAN18.3
+- ASLAN18.2 üstüne yazılarak devam edildi.
+- 5K HD gerçek Pi Coin WebP görsel asset eklendi.
+- Sol üst coin artık gerçek görsel olarak dönüyor.
+- ZIP 1 MB altında tutuldu.
