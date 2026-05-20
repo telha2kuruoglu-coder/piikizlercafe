@@ -43,10 +43,7 @@ function App() {
   useEffect(() => {
     const checkPi = setInterval(() => {
       if (window.Pi) {
-        window.Pi.init({
-          version: '2.0',
-          sandbox: true
-        })
+        window.Pi.init({ version: '2.0', sandbox: true })
         setPiReady(true)
         clearInterval(checkPi)
       }
@@ -68,10 +65,7 @@ function App() {
     }
 
     try {
-      window.Pi.init({
-        version: '2.0',
-        sandbox: true
-      })
+      window.Pi.init({ version: '2.0', sandbox: true })
 
       await window.Pi.authenticate(['payments'], function (payment) {
         console.log('Incomplete payment:', payment)
@@ -84,15 +78,28 @@ function App() {
           metadata: { type: 'test-payment' }
         },
         {
-          onReadyForServerApproval: function (paymentId) {
-            alert('Odeme onay bekliyor: ' + paymentId)
+          onReadyForServerApproval: async function (paymentId) {
+            await fetch('/api/approve-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentId })
+            })
           },
-          onReadyForServerCompletion: function (paymentId, txid) {
-            alert('Odeme tamamlandi: ' + txid)
+
+          onReadyForServerCompletion: async function (paymentId, txid) {
+            await fetch('/api/complete-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentId, txid })
+            })
+
+            alert('Odeme islemi tamamlandi')
           },
+
           onCancel: function () {
             alert('Odeme iptal edildi')
           },
+
           onError: function (error) {
             alert('Hata: ' + JSON.stringify(error))
           }
@@ -113,7 +120,6 @@ function App() {
 
         <div className="coin">π</div>
         <h1>Piikizler Cafe</h1>
-
         <p>Aslan 18 büyük yükseltme: admin panel görünümü, slider, yorum/kalp, kampanya vitrini ve dolu menü.</p>
 
         <div className="heroActions">
