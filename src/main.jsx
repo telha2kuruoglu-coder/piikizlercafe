@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
 
@@ -33,6 +33,25 @@ const comments = [
 ]
 
 function App() {
+
+  useEffect(() => {
+    const script = document.createElement('script')
+
+    script.src = 'https://sdk.minepi.com/pi-sdk.js'
+    script.async = true
+
+    script.onload = () => {
+      if (window.Pi) {
+        window.Pi.init({
+          version: "2.0",
+          sandbox: true
+        })
+      }
+    }
+
+    document.body.appendChild(script)
+  }, [])
+
   const [musicOn, setMusicOn] = useState(false)
   const [cart, setCart] = useState([])
   const [likes, setLikes] = useState(314)
@@ -48,6 +67,7 @@ function App() {
 
   return (
     <main className="app">
+
       <section className="hero">
         <div className="topline">
           <span>ASLAN 18.1</span>
@@ -59,11 +79,14 @@ function App() {
         <h1>Piikizler Cafe</h1>
 
         <p>
-          Aslan 18 büyük yükseltme: admin panel görünümü,
-          slider, yorum/kalp, kampanya vitrini ve dolu menü.
+          Aslan 18 büyük yükseltme:
+          admin panel görünümü,
+          slider, yorum/kalp,
+          kampanya vitrini ve dolu menü.
         </p>
 
         <div className="heroActions">
+
           <button
             className="goldBtn"
             onClick={() => setMusicOn(!musicOn)}
@@ -79,6 +102,7 @@ function App() {
           >
             ❤️ {likes}
           </button>
+
         </div>
 
         <div className="musicBox">
@@ -86,9 +110,11 @@ function App() {
             ? 'Modern slow cafe modu aktif.'
             : 'Telefonlarda otomatik müzik engellenebilir; butonla başlatılır.'}
         </div>
+
       </section>
 
       <section className="slider">
+
         <div className="slide mainSlide">
           <b>☕ Premium Cafe</b>
           <span>Pi ile modern sipariş deneyimi</span>
@@ -103,9 +129,11 @@ function App() {
           <b>🪙 Demo Pi Ödeme</b>
           <span>Testnet ödeme alanı</span>
         </div>
+
       </section>
 
       <section className="stats">
+
         <div>
           <b>{cart.length}</b>
           <span>Sepet</span>
@@ -120,9 +148,11 @@ function App() {
           <b>314$</b>
           <span>Pi vitrin</span>
         </div>
+
       </section>
 
       <section className="campaign">
+
         <h2>🔥 Günün Kampanyası</h2>
 
         <p>
@@ -142,6 +172,7 @@ function App() {
         >
           Sepete Ekle
         </button>
+
       </section>
 
       <Menu
@@ -163,6 +194,7 @@ function App() {
       />
 
       <section className="panel">
+
         <h2>🪙 Demo Pi Ödeme</h2>
 
         <p>
@@ -173,51 +205,56 @@ function App() {
         <button
           className="payBtn"
           onClick={() => {
+
             if (window.Pi) {
+
               window.Pi.createPayment(
                 {
                   amount: 0.01,
-                  memo: 'Piikizler Cafe Test Odeme',
+                  memo: "Piikizler Cafe Test Odeme",
                   metadata: {
-                    type: 'test-payment'
+                    type: "test-payment"
                   }
                 },
+
                 {
                   onReadyForServerApproval: function (paymentId) {
-                    alert(
-                      'Odeme onay bekliyor: ' + paymentId
-                    )
+                    alert("Odeme onay bekliyor: " + paymentId)
                   },
 
-                  onReadyForServerCompletion: function (
-                    paymentId,
-                    txid
-                  ) {
-                    alert('Odeme tamamlandi')
+                  onReadyForServerCompletion: function (paymentId, txid) {
+                    alert("Odeme tamamlandi")
                   },
 
                   onCancel: function () {
-                    alert('Odeme iptal edildi')
+                    alert("Odeme iptal edildi")
                   },
 
                   onError: function (error) {
-                    alert('Hata: ' + error)
+                    alert("Hata: " + error)
                   }
                 }
               )
+
             } else {
-              alert('Pi Browser gerekli')
+
+              alert("Pi Browser gerekli")
+
             }
+
           }}
         >
           Pi ile Demo Öde
         </button>
+
       </section>
 
       <section className="admin">
+
         <h2>⚙️ Admin Panel</h2>
 
         <div className="adminGrid">
+
           <div>
             <b>Ürün Ekle</b>
             <span>Menüye yeni ürün</span>
@@ -237,47 +274,69 @@ function App() {
             <b>Yorumlar</b>
             <span>Kalp ve beğeni</span>
           </div>
+
         </div>
+
       </section>
 
       <section className="panel">
+
         <h2>💬 Müşteri Yorumları</h2>
 
         {comments.map((c) => (
           <div className="comment" key={c.name}>
+
             <strong>{c.name}</strong>
+
             <p>{c.text}</p>
+
             <span>❤️ {c.hearts}</span>
+
           </div>
         ))}
+
       </section>
+
     </main>
   )
 }
 
 function Menu({ title, items, addToCart }) {
+
   return (
+
     <section className="card">
+
       <h2>{title}</h2>
 
       {items.map((item) => (
+
         <div className="item" key={item.name}>
-          <div className="foodIcon">{item.icon}</div>
+
+          <div className="foodIcon">
+            {item.icon}
+          </div>
 
           <div>
+
             <strong>{item.name}</strong>
 
             <span>
               {item.note} • {item.price.toFixed(2)} Pi
             </span>
+
           </div>
 
           <button onClick={() => addToCart(item)}>
             +
           </button>
+
         </div>
+
       ))}
+
     </section>
+
   )
 }
 
