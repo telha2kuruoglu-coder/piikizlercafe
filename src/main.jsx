@@ -37,6 +37,8 @@ function App() {
   const [cart, setCart] = useState([])
   const [likes, setLikes] = useState(314)
   const [piReady, setPiReady] = useState(false)
+  const [user, setUser] = useState(null)
+  const [paying, setPaying] = useState(false)
 
   const totalPi = useMemo(
     () => cart.reduce((sum, item) => sum + item.price, 0),
@@ -44,89 +46,127 @@ function App() {
   )
 
   useEffect(() => {
-    const checkPi = setInterval(() => {
+    const timer = setInterval(() => {
       if (window.Pi) {
-        window.Pi.init({
-          version: '2.0',
-          sandbox: false
-        })
-
-        setPiReady(true)
-        clearInterval(checkPi)
+        try {
+          window.Pi.init({
+            version: '2.0',
+            sandbox: true
+          })
+          setPiReady(true)
+          clearInterval(timer)
+        } catch (e) {
+          console.log('Pi init bekleniyor:', e)
+        }
       }
     }, 500)
 
-    return () => clearInterval(checkPi)
+    return () => clearInterval(timer)
   }, [])
 
   function addToCart(item) {
     setCart((old) => [...old, item])
   }
 
+  async function safePost(url, data) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (!res.ok) {
+        console.log(url + ' cevap vermedi:', res.status)
+      }
+
+      return true
+    } catch (err) {
+      console.log(url + ' api yok veya hata verdi:', err)
+      return false
+    }
+  }
+
   async function startPiPayment() {
+    if (paying) return
+
     if (!window.Pi) {
-      alert('Pi SDK bulunamadı. Pi Browser içinden aç.')
+      alert('Pi SDK bulunamadı. Uygulamayı Pi Browser içinden aç.')
       return
     }
+
+    setPaying(true)
 
     try {
       window.Pi.init({
         version: '2.0',
-        sandbox: false
+        sandbox: true
       })
 
-      await window.Pi.authenticate(
-        ['payments'],
+      const authResult = await window.Pi.authenticate(
+        ['username', 'payments'],
         function (payment) {
-          console.log('Incomplete payment:', payment)
+          console.log('Tamamlanmamış ödeme:', payment)
         }
       )
 
-      window.Pi.createPayment(
+      setUser(authResult.user)
+
+      const paymentAmount = totalPi > 0 ? Number(totalPi.toFixed(2)) : 0.01
+
+      await window.Pi.createPayment(
         {
-          amount: 0.01,
-          memo: 'Piikizler Cafe Test Odeme',
+          amount: paymentAmount,
+          memo: 'Piikizler Cafe Demo Odeme',
           metadata: {
-            type: 'test-payment'
+            app: 'Piikizler Cafe',
+            type: 'demo-payment',
+            username: authResult?.user?.username || 'guest',
+            cartCount: cart.length,
+            total: paymentAmount
           }
         },
         {
           onReadyForServerApproval: async function (paymentId) {
-            await fetch('/api/approve-payment', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ paymentId })
+            console.log('Server approval:', paymentId)
+
+            await safePost('/api/approve-payment', {
+              paymentId
             })
           },
 
           onReadyForServerCompletion: async function (paymentId, txid) {
-            await fetch('/api/complete-payment', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                paymentId,
-                txid
-              })
+            console.log('Server completion:', paymentId, txid)
+
+            await safePost('/api/complete-payment', {
+              paymentId,
+              txid
             })
 
-            alert('Odeme islemi tamamlandi')
+            alert('Ödeme başarıyla tamamlandı ✅')
+            setCart([])
+            setPaying(false)
           },
 
-          onCancel: function () {
-            alert('Odeme iptal edildi')
+          onCancel: function (paymentId) {
+            console.log('Ödeme iptal edildi:', paymentId)
+            alert('Ödeme iptal edildi. Tekrar denemek için Pi ile Demo Öde butonuna bas.')
+            setPaying(false)
           },
 
-          onError: function (error) {
-            alert('Hata: ' + JSON.stringify(error))
+          onError: function (error, payment) {
+            console.log('Pi ödeme hatası:', error, payment)
+            alert('Pi ödeme hatası: ' + JSON.stringify(error))
+            setPaying(false)
           }
         }
       )
     } catch (err) {
-      alert('Pi giris/odeme hatasi: ' + err.message)
+      console.log('Pi giriş/ödeme hatası:', err)
+      alert('Pi giriş/ödeme hatası: ' + (err?.message || JSON.stringify(err)))
+      setPaying(false)
     }
   }
 
@@ -134,7 +174,7 @@ function App() {
     <main className="app">
       <section className="hero">
         <div className="topline">
-          <span>ASLAN 18.1</span>
+          <span>ASLAN 18.2</span>
           <span>{piReady ? 'Pi SDK Hazır' : 'Pi SDK Bekleniyor'}</span>
         </div>
 
@@ -142,9 +182,15 @@ function App() {
         <h1>Piikizler Cafe</h1>
 
         <p>
-          Aslan 18 büyük yükseltme: admin panel görünümü, slider,
-          yorum/kalp, kampanya vitrini ve dolu menü.
+          Piikizler Cafe premium Pi ödeme demo sistemi, sıcak/soğuk içecekler,
+          tatlı vitrini, kampanya alanı ve Pi Browser uyumlu ödeme testi.
         </p>
+
+        {user && (
+          <div className="musicBox">
+            Hoş geldin @{user.username}
+          </div>
+        )}
 
         <div className="heroActions">
           <button
@@ -183,8 +229,8 @@ function App() {
         </div>
 
         <div className="slide">
-          <b>🪙 Demo Pi Ödeme</b>
-          <span>Payment test alanı</span>
+          <b>🪙 Pi Demo Ödeme</b>
+          <span>Sandbox ödeme test alanı</span>
         </div>
       </section>
 
@@ -229,8 +275,9 @@ function App() {
       <Menu title="🍰 Tatlılar" items={desserts} addToCart={addToCart} />
 
       <section className="panel">
-        <h2>🪙 Demo Pi Ödeme</h2>
+        <h2>🪙 Pi Demo Ödeme</h2>
         <p>Sepette {cart.length} ürün var. Toplam: {totalPi.toFixed(2)} Pi</p>
+        <p>Test için ürün yoksa otomatik 0.01 Pi demo ödeme açılır.</p>
 
         <button
           type="button"
@@ -242,8 +289,9 @@ function App() {
             touchAction: 'manipulation'
           }}
           onClick={startPiPayment}
+          disabled={paying}
         >
-          Pi ile Demo Öde
+          {paying ? 'Pi Ödeme Açılıyor...' : 'Pi ile Demo Öde'}
         </button>
       </section>
 
