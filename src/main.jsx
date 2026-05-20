@@ -38,12 +38,19 @@ function App() {
   const [likes, setLikes] = useState(314)
   const [piReady, setPiReady] = useState(false)
 
-  const totalPi = useMemo(() => cart.reduce((sum, item) => sum + item.price, 0), [cart])
+  const totalPi = useMemo(
+    () => cart.reduce((sum, item) => sum + item.price, 0),
+    [cart]
+  )
 
   useEffect(() => {
     const checkPi = setInterval(() => {
       if (window.Pi) {
-        window.Pi.init({ version: '2.0', sandbox: true })
+        window.Pi.init({
+          version: '2.0',
+          sandbox: false
+        })
+
         setPiReady(true)
         clearInterval(checkPi)
       }
@@ -57,31 +64,39 @@ function App() {
   }
 
   async function startPiPayment() {
-    alert('Buton çalıştı. Pi ödeme başlatılıyor.')
-
     if (!window.Pi) {
       alert('Pi SDK bulunamadı. Pi Browser içinden aç.')
       return
     }
 
     try {
-      window.Pi.init({ version: '2.0', sandbox: true })
-
-      await window.Pi.authenticate(['payments'], function (payment) {
-        console.log('Incomplete payment:', payment)
+      window.Pi.init({
+        version: '2.0',
+        sandbox: false
       })
+
+      await window.Pi.authenticate(
+        ['payments'],
+        function (payment) {
+          console.log('Incomplete payment:', payment)
+        }
+      )
 
       window.Pi.createPayment(
         {
           amount: 0.01,
           memo: 'Piikizler Cafe Test Odeme',
-          metadata: { type: 'test-payment' }
+          metadata: {
+            type: 'test-payment'
+          }
         },
         {
           onReadyForServerApproval: async function (paymentId) {
             await fetch('/api/approve-payment', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json'
+              },
               body: JSON.stringify({ paymentId })
             })
           },
@@ -89,8 +104,13 @@ function App() {
           onReadyForServerCompletion: async function (paymentId, txid) {
             await fetch('/api/complete-payment', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ paymentId, txid })
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                paymentId,
+                txid
+              })
             })
 
             alert('Odeme islemi tamamlandi')
@@ -120,20 +140,34 @@ function App() {
 
         <div className="coin">π</div>
         <h1>Piikizler Cafe</h1>
-        <p>Aslan 18 büyük yükseltme: admin panel görünümü, slider, yorum/kalp, kampanya vitrini ve dolu menü.</p>
+
+        <p>
+          Aslan 18 büyük yükseltme: admin panel görünümü, slider,
+          yorum/kalp, kampanya vitrini ve dolu menü.
+        </p>
 
         <div className="heroActions">
-          <button className="goldBtn" type="button" onClick={() => setMusicOn(!musicOn)}>
+          <button
+            className="goldBtn"
+            type="button"
+            onClick={() => setMusicOn(!musicOn)}
+          >
             {musicOn ? '🎵 Slow Cafe Müzik Açık' : '🎵 Müziği Aç'}
           </button>
 
-          <button className="darkBtn" type="button" onClick={() => setLikes(likes + 1)}>
+          <button
+            className="darkBtn"
+            type="button"
+            onClick={() => setLikes(likes + 1)}
+          >
             ❤️ {likes}
           </button>
         </div>
 
         <div className="musicBox">
-          {musicOn ? 'Modern slow cafe modu aktif.' : 'Telefonlarda otomatik müzik engellenebilir; butonla başlatılır.'}
+          {musicOn
+            ? 'Modern slow cafe modu aktif.'
+            : 'Telefonlarda otomatik müzik engellenebilir; butonla başlatılır.'}
         </div>
       </section>
 
@@ -142,26 +176,50 @@ function App() {
           <b>☕ Premium Cafe</b>
           <span>Pi ile modern sipariş deneyimi</span>
         </div>
+
         <div className="slide">
           <b>🍰 Tatlı Vitrini</b>
           <span>Günlük taze ürünler</span>
         </div>
+
         <div className="slide">
           <b>🪙 Demo Pi Ödeme</b>
-          <span>Testnet ödeme alanı</span>
+          <span>Payment test alanı</span>
         </div>
       </section>
 
       <section className="stats">
-        <div><b>{cart.length}</b><span>Sepet</span></div>
-        <div><b>{totalPi.toFixed(2)} Pi</b><span>Toplam</span></div>
-        <div><b>314$</b><span>Pi vitrin</span></div>
+        <div>
+          <b>{cart.length}</b>
+          <span>Sepet</span>
+        </div>
+
+        <div>
+          <b>{totalPi.toFixed(2)} Pi</b>
+          <span>Toplam</span>
+        </div>
+
+        <div>
+          <b>314$</b>
+          <span>Pi vitrin</span>
+        </div>
       </section>
 
       <section className="campaign">
         <h2>🔥 Günün Kampanyası</h2>
         <p>Latte + Pi Pasta menüsü: VIP müşterilere özel demo indirim alanı.</p>
-        <button type="button" onClick={() => addToCart({ name: 'VIP Menü', price: 0.18, icon: '👑', note: 'Kampanya' })}>
+
+        <button
+          type="button"
+          onClick={() =>
+            addToCart({
+              name: 'VIP Menü',
+              price: 0.18,
+              icon: '👑',
+              note: 'Kampanya'
+            })
+          }
+        >
           Sepete Ekle
         </button>
       </section>
@@ -191,16 +249,33 @@ function App() {
 
       <section className="admin">
         <h2>⚙️ Admin Panel</h2>
+
         <div className="adminGrid">
-          <div><b>Ürün Ekle</b><span>Menüye yeni ürün</span></div>
-          <div><b>Slider Yönet</b><span>Ana sayfa görseli</span></div>
-          <div><b>Kampanya</b><span>VIP Pi menüsü</span></div>
-          <div><b>Yorumlar</b><span>Kalp ve beğeni</span></div>
+          <div>
+            <b>Ürün Ekle</b>
+            <span>Menüye yeni ürün</span>
+          </div>
+
+          <div>
+            <b>Slider Yönet</b>
+            <span>Ana sayfa görseli</span>
+          </div>
+
+          <div>
+            <b>Kampanya</b>
+            <span>VIP Pi menüsü</span>
+          </div>
+
+          <div>
+            <b>Yorumlar</b>
+            <span>Kalp ve beğeni</span>
+          </div>
         </div>
       </section>
 
       <section className="panel">
         <h2>💬 Müşteri Yorumları</h2>
+
         {comments.map((c) => (
           <div className="comment" key={c.name}>
             <strong>{c.name}</strong>
@@ -217,14 +292,19 @@ function Menu({ title, items, addToCart }) {
   return (
     <section className="card">
       <h2>{title}</h2>
+
       {items.map((item) => (
         <div className="item" key={item.name}>
           <div className="foodIcon">{item.icon}</div>
+
           <div>
             <strong>{item.name}</strong>
             <span>{item.note} • {item.price.toFixed(2)} Pi</span>
           </div>
-          <button type="button" onClick={() => addToCart(item)}>+</button>
+
+          <button type="button" onClick={() => addToCart(item)}>
+            +
+          </button>
         </div>
       ))}
     </section>
