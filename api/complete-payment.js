@@ -1,13 +1,21 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Only POST allowed' })
+    return res.status(405).json({ success: false, error: 'Only POST allowed' })
   }
 
-  const { paymentId, txid } = req.body
+  const { paymentId, txid } = req.body || {}
 
   if (!paymentId || !txid) {
     return res.status(400).json({
+      success: false,
       error: 'paymentId or txid missing'
+    })
+  }
+
+  if (!process.env.PI_API_KEY) {
+    return res.status(500).json({
+      success: false,
+      error: 'PI_API_KEY missing in Vercel Environment Variables'
     })
   }
 
@@ -20,29 +28,37 @@ export default async function handler(req, res) {
           Authorization: `Key ${process.env.PI_API_KEY}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          txid: txid
-        })
+        body: JSON.stringify({ txid })
       }
     )
 
-    const data = await response.json()
+    const text = await response.text()
+
+    let data
+    try {
+      data = JSON.parse(text)
+    } catch {
+      data = text
+    }
 
     if (!response.ok) {
       return res.status(response.status).json({
         success: false,
+        status: response.status,
         error: data
       })
     }
 
     return res.status(200).json({
       success: true,
+      paymentId,
+      txid,
       data
     })
   } catch (error) {
     return res.status(500).json({
       success: false,
-      error: error.message
+      error: error?.message || 'Complete payment failed'
     })
   }
 }
