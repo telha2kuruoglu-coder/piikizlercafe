@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
@@ -37,7 +36,11 @@ function App() {
   const [musicOn, setMusicOn] = useState(false)
   const [cart, setCart] = useState([])
   const [likes, setLikes] = useState(314)
-  const totalPi = useMemo(() => cart.reduce((sum, item) => sum + item.price, 0), [cart])
+
+  const totalPi = useMemo(
+    () => cart.reduce((sum, item) => sum + item.price, 0),
+    [cart]
+  )
 
   function addToCart(item) {
     setCart((old) => [...old, item])
@@ -50,19 +53,38 @@ function App() {
           <span>ASLAN 18.1</span>
           <span>Pi Network Cafe</span>
         </div>
+
         <div className="coin">π</div>
+
         <h1>Piikizler Cafe</h1>
-        <p>Aslan 18 büyük yükseltme: admin panel görünümü, slider, yorum/kalp, kampanya vitrini ve dolu menü.</p>
+
+        <p>
+          Aslan 18 büyük yükseltme: admin panel görünümü,
+          slider, yorum/kalp, kampanya vitrini ve dolu menü.
+        </p>
+
         <div className="heroActions">
-          <button className="goldBtn" onClick={() => setMusicOn(!musicOn)}>
-            {musicOn ? '🎵 Slow Cafe Müzik Açık' : '🎵 Müziği Aç'}
+          <button
+            className="goldBtn"
+            onClick={() => setMusicOn(!musicOn)}
+          >
+            {musicOn
+              ? '🎵 Slow Cafe Müzik Açık'
+              : '🎵 Müziği Aç'}
           </button>
-          <button className="darkBtn" onClick={() => setLikes(likes + 1)}>
+
+          <button
+            className="darkBtn"
+            onClick={() => setLikes(likes + 1)}
+          >
             ❤️ {likes}
           </button>
         </div>
+
         <div className="musicBox">
-          {musicOn ? 'Modern slow cafe modu aktif.' : 'Telefonlarda otomatik müzik engellenebilir; butonla başlatılır.'}
+          {musicOn
+            ? 'Modern slow cafe modu aktif.'
+            : 'Telefonlarda otomatik müzik engellenebilir; butonla başlatılır.'}
         </div>
       </section>
 
@@ -71,10 +93,12 @@ function App() {
           <b>☕ Premium Cafe</b>
           <span>Pi ile modern sipariş deneyimi</span>
         </div>
+
         <div className="slide">
           <b>🍰 Tatlı Vitrini</b>
           <span>Günlük taze ürünler</span>
         </div>
+
         <div className="slide">
           <b>🪙 Demo Pi Ödeme</b>
           <span>Testnet ödeme alanı</span>
@@ -82,41 +106,143 @@ function App() {
       </section>
 
       <section className="stats">
-        <div><b>{cart.length}</b><span>Sepet</span></div>
-        <div><b>{totalPi.toFixed(2)} Pi</b><span>Toplam</span></div>
-        <div><b>314$</b><span>Pi vitrin</span></div>
+        <div>
+          <b>{cart.length}</b>
+          <span>Sepet</span>
+        </div>
+
+        <div>
+          <b>{totalPi.toFixed(2)} Pi</b>
+          <span>Toplam</span>
+        </div>
+
+        <div>
+          <b>314$</b>
+          <span>Pi vitrin</span>
+        </div>
       </section>
 
       <section className="campaign">
         <h2>🔥 Günün Kampanyası</h2>
-        <p>Latte + Pi Pasta menüsü: VIP müşterilere özel demo indirim alanı.</p>
-        <button onClick={() => addToCart({ name: 'VIP Menü', price: 0.18, icon: '👑', note: 'Kampanya' })}>Sepete Ekle</button>
+
+        <p>
+          Latte + Pi Pasta menüsü:
+          VIP müşterilere özel demo indirim alanı.
+        </p>
+
+        <button
+          onClick={() =>
+            addToCart({
+              name: 'VIP Menü',
+              price: 0.18,
+              icon: '👑',
+              note: 'Kampanya'
+            })
+          }
+        >
+          Sepete Ekle
+        </button>
       </section>
 
-      <Menu title="🔥 Sıcak İçecekler" items={drinksHot} addToCart={addToCart} />
-      <Menu title="❄️ Soğuk İçecekler" items={drinksCold} addToCart={addToCart} />
-      <Menu title="🍰 Tatlılar" items={desserts} addToCart={addToCart} />
+      <Menu
+        title="🔥 Sıcak İçecekler"
+        items={drinksHot}
+        addToCart={addToCart}
+      />
+
+      <Menu
+        title="❄️ Soğuk İçecekler"
+        items={drinksCold}
+        addToCart={addToCart}
+      />
+
+      <Menu
+        title="🍰 Tatlılar"
+        items={desserts}
+        addToCart={addToCart}
+      />
 
       <section className="panel">
         <h2>🪙 Demo Pi Ödeme</h2>
-        <p>Sepette {cart.length} ürün var. Toplam: {totalPi.toFixed(2)} Pi</p>
-        <button className="payBtn" onClick={() => alert('Demo Pi ödeme başlatıldı 🪙')}>
+
+        <p>
+          Sepette {cart.length} ürün var.
+          Toplam: {totalPi.toFixed(2)} Pi
+        </p>
+
+        <button
+          className="payBtn"
+          onClick={() => {
+            if (window.Pi) {
+              window.Pi.createPayment(
+                {
+                  amount: 0.01,
+                  memo: 'Piikizler Cafe Test Odeme',
+                  metadata: {
+                    type: 'test-payment'
+                  }
+                },
+                {
+                  onReadyForServerApproval: function (paymentId) {
+                    alert(
+                      'Odeme onay bekliyor: ' + paymentId
+                    )
+                  },
+
+                  onReadyForServerCompletion: function (
+                    paymentId,
+                    txid
+                  ) {
+                    alert('Odeme tamamlandi')
+                  },
+
+                  onCancel: function () {
+                    alert('Odeme iptal edildi')
+                  },
+
+                  onError: function (error) {
+                    alert('Hata: ' + error)
+                  }
+                }
+              )
+            } else {
+              alert('Pi Browser gerekli')
+            }
+          }}
+        >
           Pi ile Demo Öde
         </button>
       </section>
 
       <section className="admin">
         <h2>⚙️ Admin Panel</h2>
+
         <div className="adminGrid">
-          <div><b>Ürün Ekle</b><span>Menüye yeni ürün</span></div>
-          <div><b>Slider Yönet</b><span>Ana sayfa görseli</span></div>
-          <div><b>Kampanya</b><span>VIP Pi menüsü</span></div>
-          <div><b>Yorumlar</b><span>Kalp ve beğeni</span></div>
+          <div>
+            <b>Ürün Ekle</b>
+            <span>Menüye yeni ürün</span>
+          </div>
+
+          <div>
+            <b>Slider Yönet</b>
+            <span>Ana sayfa görseli</span>
+          </div>
+
+          <div>
+            <b>Kampanya</b>
+            <span>VIP Pi menüsü</span>
+          </div>
+
+          <div>
+            <b>Yorumlar</b>
+            <span>Kalp ve beğeni</span>
+          </div>
         </div>
       </section>
 
       <section className="panel">
         <h2>💬 Müşteri Yorumları</h2>
+
         {comments.map((c) => (
           <div className="comment" key={c.name}>
             <strong>{c.name}</strong>
@@ -133,14 +259,22 @@ function Menu({ title, items, addToCart }) {
   return (
     <section className="card">
       <h2>{title}</h2>
+
       {items.map((item) => (
         <div className="item" key={item.name}>
           <div className="foodIcon">{item.icon}</div>
+
           <div>
             <strong>{item.name}</strong>
-            <span>{item.note} • {item.price.toFixed(2)} Pi</span>
+
+            <span>
+              {item.note} • {item.price.toFixed(2)} Pi
+            </span>
           </div>
-          <button onClick={() => addToCart(item)}>+</button>
+
+          <button onClick={() => addToCart(item)}>
+            +
+          </button>
         </div>
       ))}
     </section>
