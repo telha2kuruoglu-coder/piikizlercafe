@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import './style.css'
 
+const VERCEL_PAYMENT_URL = 'https://piikizlercafe-2o38.vercel.app'
+
 const drinksHot = [
   { name: 'Türk Kahvesi', price: 0.05, icon: '☕', note: 'Köz tadında klasik' },
   { name: 'Latte', price: 0.07, icon: '🥛', note: 'Yumuşak içim' },
@@ -52,11 +54,7 @@ function App() {
     }
 
     initPi()
-
-    const timer = setInterval(() => {
-      initPi()
-    }, 1000)
-
+    const timer = setInterval(initPi, 1000)
     return () => clearInterval(timer)
   }, [])
 
@@ -66,7 +64,7 @@ function App() {
 
   const addToCart = (item) => {
     setCart((prev) => [...prev, item])
-    setPaymentStatus(item.name + ' sepete eklendi')
+    setPaymentStatus(`${item.name} sepete eklendi`)
   }
 
   const clearCart = () => {
@@ -74,139 +72,37 @@ function App() {
     setPaymentStatus('Sepet temizlendi')
   }
 
-  const onIncompletePaymentFound = (payment) => {
-    console.log(payment)
-  }
-
-  const handlePiPayment = async () => {
-    try {
-      if (!window.Pi) {
-        alert('Pi Browser veya Pi domain adresinden aç.')
-        return
-      }
-
-      if (cart.length === 0) {
-        alert('Önce sepete ürün ekle.')
-        return
-      }
-
-      const amount = Number(total.toFixed(2))
-
-      await window.Pi.authenticate(['payments'], onIncompletePaymentFound)
-
-      setPaymentStatus('TestPi ödeme başlatılıyor...')
-
-      const paymentData = {
-        amount: amount,
-        memo: 'Pi İkizler Cafe ASLAN 18.7',
-        metadata: {
-          items: cart.map((i) => i.name),
-          source: window.location.hostname
-        }
-      }
-
-      window.Pi.createPayment(paymentData, {
-        onReadyForServerApproval: async function(paymentId) {
-
-          setPaymentStatus('Approve gönderiliyor...')
-
-          const response = await fetch('/api/approve', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              paymentId
-            })
-          })
-
-          if (!response.ok) {
-            throw new Error('Approve başarısız')
-          }
-
-          setPaymentStatus('Approve tamamlandı')
-        },
-
-        onReadyForServerCompletion: async function(paymentId, txid) {
-
-          setPaymentStatus('Complete gönderiliyor...')
-
-          const response = await fetch('/api/complete', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              paymentId,
-              txid
-            })
-          })
-
-          if (!response.ok) {
-            throw new Error('Complete başarısız')
-          }
-
-          setPaymentStatus('✅ TestPi ödeme başarılı')
-          alert('✅ TestPi ödeme başarılı')
-
-          setCart([])
-        },
-
-        onCancel: function() {
-          setPaymentStatus('Ödeme iptal edildi')
-        },
-
-        onError: function(error) {
-          console.log(error)
-          setPaymentStatus('Pi ödeme hatası')
-          alert('Pi ödeme hatası oluştu')
-        }
-      })
-
-    } catch (error) {
-      console.log(error)
-      setPaymentStatus('Ödeme başlatılamadı')
-      alert(error.message)
-    }
+  const goToWorkingPaymentApp = () => {
+    window.location.href = VERCEL_PAYMENT_URL
   }
 
   return (
     <main className="app">
-
       <section className="hero">
         <div>
-
-          <p className="badge">
-            ASLAN 18.7 • Payment Fix
-          </p>
+          <p className="badge">ASLAN 18.7 • App Studio Redirect Fix</p>
 
           <h1>☕ Pi İkizler Cafe</h1>
 
           <p>
-            Hem uygulama içinde hem domain/uzantı adresinde çalışan TestPi sistemi.
+            App Studio içinden ödeme için çalışan Vercel TestPi ödeme sayfasına yönlendirme.
           </p>
 
-          <button onClick={handlePiPayment}>
+          <button type="button" onClick={goToWorkingPaymentApp}>
             Pay with Pi / TestPi ile Öde
           </button>
 
-          <p className="status">
-            {paymentStatus}
-          </p>
+          <p className="status">{paymentStatus}</p>
 
           <p className="mini">
             SDK: {piReady ? 'Hazır ✅' : 'Pi Browser bekleniyor'}
           </p>
-
         </div>
 
-        <div className="piCoin">
-          π
-        </div>
+        <div className="piCoin">π</div>
       </section>
 
       <section className="panel">
-
         <h2>🛒 Sepet</h2>
 
         {cart.length === 0 ? (
@@ -214,14 +110,9 @@ function App() {
         ) : (
           <>
             {cart.map((item, index) => (
-              <div key={index} className="cartRow">
-                <span>
-                  {item.icon} {item.name}
-                </span>
-
-                <b>
-                  {item.price.toFixed(2)} Pi
-                </b>
+              <div key={`${item.name}-${index}`} className="cartRow">
+                <span>{item.icon} {item.name}</span>
+                <b>{item.price.toFixed(2)} Pi</b>
               </div>
             ))}
 
@@ -230,35 +121,20 @@ function App() {
               <strong>{total.toFixed(2)} Pi</strong>
             </div>
 
-            <button className="payBtn" onClick={handlePiPayment}>
+            <button type="button" className="payBtn" onClick={goToWorkingPaymentApp}>
               Pay with Pi / TestPi ile Öde
             </button>
 
-            <button className="clearBtn" onClick={clearCart}>
+            <button type="button" className="clearBtn" onClick={clearCart}>
               Sepeti Temizle
             </button>
           </>
         )}
       </section>
 
-      <Menu
-        title="🔥 Sıcak İçecekler"
-        items={drinksHot}
-        addToCart={addToCart}
-      />
-
-      <Menu
-        title="🧊 Soğuk İçecekler"
-        items={drinksCold}
-        addToCart={addToCart}
-      />
-
-      <Menu
-        title="🍰 Tatlılar"
-        items={desserts}
-        addToCart={addToCart}
-      />
-
+      <Menu title="🔥 Sıcak İçecekler" items={drinksHot} addToCart={addToCart} />
+      <Menu title="🧊 Soğuk İçecekler" items={drinksCold} addToCart={addToCart} />
+      <Menu title="🍰 Tatlılar" items={desserts} addToCart={addToCart} />
     </main>
   )
 }
@@ -266,31 +142,22 @@ function App() {
 function Menu({ title, items, addToCart }) {
   return (
     <section className="card">
-
       <h2>{title}</h2>
 
       {items.map((item) => (
         <div className="item" key={item.name}>
-
-          <div className="foodIcon">
-            {item.icon}
-          </div>
+          <div className="foodIcon">{item.icon}</div>
 
           <div>
             <strong>{item.name}</strong>
-
-            <span>
-              {item.note} • {item.price.toFixed(2)} Pi
-            </span>
+            <span>{item.note} • {item.price.toFixed(2)} Pi</span>
           </div>
 
-          <button onClick={() => addToCart(item)}>
+          <button type="button" onClick={() => addToCart(item)}>
             +
           </button>
-
         </div>
       ))}
-
     </section>
   )
 }
