@@ -72,25 +72,21 @@ function App() {
     setPaymentStatus('Sepet temizlendi')
   }
 
-  const goToWorkingPaymentApp = () => {
-    window.open(VERCEL_PAYMENT_URL, '_blank')
-  }
-
   return (
     <main className="app">
       <section className="hero">
         <div>
-          <p className="badge">ASLAN 18.7 • Talha Ödeme Yap Fix</p>
+          <p className="badge">ASLAN 18.7 • App Studio Redirect Fix</p>
 
           <h1>☕ Pi İkizler Cafe</h1>
 
           <p>
-            App Studio içinden ödeme için çalışan Vercel TestPi ödeme sayfası yeni sekmede açılır.
+            App Studio içinden ödeme için çalışan Vercel TestPi ödeme sayfasına yönlendirme.
           </p>
 
-          <button type="button" onClick={goToWorkingPaymentApp}>
+          <a href={VERCEL_PAYMENT_URL} target="_top" className="payBtn">
             Pay with Pi / TestPi ile Öde
-          </button>
+          </a>
 
           <p className="status">{paymentStatus}</p>
 
@@ -121,9 +117,9 @@ function App() {
               <strong>{total.toFixed(2)} Pi</strong>
             </div>
 
-            <button type="button" className="payBtn" onClick={goToWorkingPaymentApp}>
+            <a href={VERCEL_PAYMENT_URL} target="_top" className="payBtn">
               Pay with Pi / TestPi ile Öde
-            </button>
+            </a>
 
             <button type="button" className="clearBtn" onClick={clearCart}>
               Sepeti Temizle
