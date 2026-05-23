@@ -1,11 +1,13 @@
 export default async function handler(req, res) {
+
   if (req.method !== 'POST') {
     return res.status(405).json({
-      error: 'Only POST allowed'
+      error: 'Method not allowed'
     })
   }
 
   try {
+
     const { paymentId } = req.body
 
     if (!paymentId) {
@@ -25,22 +27,17 @@ export default async function handler(req, res) {
       }
     )
 
-    const data = await response.json()
+    const text = await response.text()
 
-    if (!response.ok) {
-      console.log(data)
-
-      return res.status(response.status).json({
-        error: data
-      })
-    }
+    console.log('APPROVE RESPONSE:', text)
 
     return res.status(200).json({
       success: true,
-      data
+      raw: text
     })
 
   } catch (error) {
+
     console.log(error)
 
     return res.status(500).json({
