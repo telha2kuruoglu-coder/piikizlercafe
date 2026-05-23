@@ -73,19 +73,19 @@ function App() {
   }
 
   const goToWorkingPaymentApp = () => {
-    window.location.href = VERCEL_PAYMENT_URL
+    window.open(VERCEL_PAYMENT_URL, '_blank')
   }
 
   return (
     <main className="app">
       <section className="hero">
         <div>
-          <p className="badge">ASLAN 18.7 • App Studio Redirect Fix</p>
+          <p className="badge">ASLAN 18.7 • Talha Ödeme Yap Fix</p>
 
           <h1>☕ Pi İkizler Cafe</h1>
 
           <p>
-            App Studio içinden ödeme için çalışan Vercel TestPi ödeme sayfasına yönlendirme.
+            App Studio içinden ödeme için çalışan Vercel TestPi ödeme sayfası yeni sekmede açılır.
           </p>
 
           <button type="button" onClick={goToWorkingPaymentApp}>
