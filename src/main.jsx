@@ -29,289 +29,221 @@ const desserts = [
 const comments = [
   { name: 'Ayşe', text: 'Pi Pasta ve latte harika olmuş.', hearts: 128 },
   { name: 'Mehmet', text: 'Mor tema çok premium duruyor.', hearts: 96 },
-  { name: 'Zeynep', text: 'Pi ödeme demo alanı çok iyi.', hearts: 144 }
+  { name: 'Zeynep', text: 'Pi ödeme artık TestPi sistemine bağlanıyor.', hearts: 144 }
 ]
 
 function App() {
   const [musicOn, setMusicOn] = useState(false)
   const [cart, setCart] = useState([])
-  const [likes, setLikes] = useState(314)
+  const [paymentStatus, setPaymentStatus] = useState('TestPi ödeme hazır')
   const [piReady, setPiReady] = useState(false)
-  const [user, setUser] = useState(null)
-  const [paying, setPaying] = useState(false)
-
-  const totalPi = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price, 0),
-    [cart]
-  )
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      if (window.Pi) {
-        try {
-          window.Pi.init({
-            version: '2.0',
-            sandbox: true
-          })
-          setPiReady(true)
-          clearInterval(timer)
-        } catch (e) {
-          console.log('Pi init bekleniyor:', e)
-        }
-      }
-    }, 500)
+    const timer = setTimeout(() => {
+      setPiReady(Boolean(window.Pi))
+    }, 800)
 
-    return () => clearInterval(timer)
+    return () => clearTimeout(timer)
   }, [])
 
-  function addToCart(item) {
-    setCart((old) => [...old, item])
+  const allItems = [...drinksHot, ...drinksCold, ...desserts]
+
+  const total = useMemo(() => {
+    return cart.reduce((sum, item) => sum + item.price, 0)
+  }, [cart])
+
+  const addToCart = (item) => {
+    setCart((prev) => [...prev, item])
+    setPaymentStatus(`${item.name} sepete eklendi`)
   }
 
-  async function safePost(url, data) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-      })
+  const clearCart = () => {
+    setCart([])
+    setPaymentStatus('Sepet temizlendi')
+  }
 
-      if (!res.ok) {
-        console.log(url + ' cevap vermedi:', res.status)
+  const onIncompletePaymentFound = (payment) => {
+    console.log('Eksik ödeme bulundu:', payment)
+    setPaymentStatus('Eksik ödeme bulundu, tekrar kontrol ediliyor...')
+  }
+
+  const handlePiPayment = async () => {
+    try {
+      if (!window.Pi) {
+        setPaymentStatus('Pi SDK bulunamadı')
+        alert('Pi SDK bulunamadı. Lütfen Pi Browser veya Pi uzantı/domain adresinden aç.')
+        return
       }
 
-      return true
-    } catch (err) {
-      console.log(url + ' api yok veya hata verdi:', err)
-      return false
-    }
-  }
+      if (cart.length === 0) {
+        alert('Ödeme için önce sepete ürün ekle.')
+        return
+      }
 
-  async function startPiPayment() {
-    if (paying) return
+      const amount = Number(total.toFixed(2))
 
-    if (!window.Pi) {
-      alert('Pi SDK bulunamadı. Uygulamayı Pi Browser içinden aç.')
-      return
-    }
+      if (!amount || amount <= 0) {
+        alert('Geçerli ödeme tutarı oluşmadı.')
+        return
+      }
 
-    setPaying(true)
+      setPaymentStatus('Pi hesabı doğrulanıyor...')
 
-    try {
-      window.Pi.init({
-        version: '2.0',
-        sandbox: true
-      })
+      await window.Pi.authenticate(['payments'], onIncompletePaymentFound)
 
-      const authResult = await window.Pi.authenticate(
-        ['username', 'payments'],
-        function (payment) {
-          console.log('Tamamlanmamış ödeme:', payment)
+      setPaymentStatus('TestPi ödeme başlatılıyor...')
+
+      const paymentData = {
+        amount,
+        memo: 'Pi İkizler Cafe ASLAN 18.7 TestPi Siparişi',
+        metadata: {
+          app: 'Pi İkizler Cafe',
+          version: 'ASLAN 18.7',
+          source: window.location.hostname,
+          items: cart.map((item) => item.name),
+          total: amount
         }
-      )
+      }
 
-      setUser(authResult.user)
+      window.Pi.createPayment(paymentData, {
+        onReadyForServerApproval: async function (paymentId) {
+          setPaymentStatus('Ödeme server onayına gönderiliyor...')
 
-      const paymentAmount = totalPi > 0 ? Number(totalPi.toFixed(2)) : 0.01
+          const response = await fetch('/api/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId })
+          })
 
-      await window.Pi.createPayment(
-        {
-          amount: paymentAmount,
-          memo: 'Piikizler Cafe Demo Odeme',
-          metadata: {
-            app: 'Piikizler Cafe',
-            type: 'demo-payment',
-            username: authResult?.user?.username || 'guest',
-            cartCount: cart.length,
-            total: paymentAmount
+          const data = await response.json().catch(() => ({}))
+
+          if (!response.ok) {
+            console.error('Approve hatası:', data)
+            throw new Error('Approve başarısız')
           }
+
+          setPaymentStatus('Server onayı tamamlandı')
         },
-        {
-          onReadyForServerApproval: async function (paymentId) {
-            console.log('Server approval:', paymentId)
 
-            await safePost('/api/approve-payment', {
-              paymentId
-            })
-          },
+        onReadyForServerCompletion: async function (paymentId, txid) {
+          setPaymentStatus('Ödeme blockchain tamamlamasına gönderiliyor...')
 
-          onReadyForServerCompletion: async function (paymentId, txid) {
-            console.log('Server completion:', paymentId, txid)
+          const response = await fetch('/api/complete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId, txid })
+          })
 
-            await safePost('/api/complete-payment', {
-              paymentId,
-              txid
-            })
+          const data = await response.json().catch(() => ({}))
 
-            alert('Ödeme başarıyla tamamlandı ✅')
-            setCart([])
-            setPaying(false)
-          },
-
-          onCancel: function (paymentId) {
-            console.log('Ödeme iptal edildi:', paymentId)
-            alert('Ödeme iptal edildi. Tekrar denemek için Pi ile Demo Öde butonuna bas.')
-            setPaying(false)
-          },
-
-          onError: function (error, payment) {
-            console.log('Pi ödeme hatası:', error, payment)
-            alert('Pi ödeme hatası: ' + JSON.stringify(error))
-            setPaying(false)
+          if (!response.ok) {
+            console.error('Complete hatası:', data)
+            throw new Error('Complete başarısız')
           }
+
+          setPaymentStatus('✅ TestPi ödeme başarılı')
+          alert('✅ TestPi ödeme başarılı')
+          setCart([])
+        },
+
+        onCancel: function (paymentId) {
+          console.log('Ödeme iptal edildi:', paymentId)
+          setPaymentStatus('Ödeme iptal edildi')
+        },
+
+        onError: function (error, payment) {
+          console.error('Pi ödeme hatası:', error, payment)
+          setPaymentStatus('Pi ödeme hatası oluştu')
+          alert('Pi ödeme hatası: ' + (error?.message || 'Bilinmeyen hata'))
         }
-      )
-    } catch (err) {
-      console.log('Pi giriş/ödeme hatası:', err)
-      alert('Pi giriş/ödeme hatası: ' + (err?.message || JSON.stringify(err)))
-      setPaying(false)
+      })
+    } catch (error) {
+      console.error('Ödeme başlatılamadı:', error)
+      setPaymentStatus('Ödeme başlatılamadı')
+      alert(error.message || 'Ödeme başlatılamadı')
     }
   }
 
   return (
     <main className="app">
       <section className="hero">
-        <div className="topline">
-          <span>ASLAN 18.2</span>
-          <span>{piReady ? 'Pi SDK Hazır' : 'Pi SDK Bekleniyor'}</span>
-        </div>
+        <div>
+          <p className="badge">ASLAN 18.7 • TestPi Payment Fix</p>
+          <h1>☕ Pi İkizler Cafe</h1>
+          <p>
+            Hem uygulama içi hem de uzantı/domain adresinde çalışan TestPi ödeme sistemi.
+          </p>
 
-        <div className="coin">π</div>
-        <h1>Piikizler Cafe</h1>
+          <div className="heroActions">
+            <button type="button" onClick={() => setMusicOn((v) => !v)}>
+              {musicOn ? '🔊 Müzik Açık' : '🔇 Müzik Kapalı'}
+            </button>
 
-        <p>
-          Piikizler Cafe premium Pi ödeme demo sistemi, sıcak/soğuk içecekler,
-          tatlı vitrini, kampanya alanı ve Pi Browser uyumlu ödeme testi.
-        </p>
-
-        {user && (
-          <div className="musicBox">
-            Hoş geldin @{user.username}
+            <button type="button" onClick={handlePiPayment}>
+              Pay with Pi / TestPi ile Öde
+            </button>
           </div>
+
+          <p className="status">{paymentStatus}</p>
+          <p className="mini">
+            Pi SDK: {piReady ? 'Hazır ✅' : 'Bekleniyor / Pi Browser gerekli'}
+          </p>
+        </div>
+
+        <div className="piCoin">π</div>
+      </section>
+
+      <section className="panel">
+        <h2>🛒 Sepet</h2>
+
+        {cart.length === 0 ? (
+          <p>Sepet boş. Ürün ekle, sonra TestPi ile öde.</p>
+        ) : (
+          <>
+            {cart.map((item, index) => (
+              <div className="cartRow" key={`${item.name}-${index}`}>
+                <span>{item.icon} {item.name}</span>
+                <b>{item.price.toFixed(2)} Pi</b>
+              </div>
+            ))}
+
+            <div className="total">
+              <span>Toplam</span>
+              <strong>{total.toFixed(2)} Pi</strong>
+            </div>
+
+            <button type="button" className="payBtn" onClick={handlePiPayment}>
+              Pay with Pi / TestPi ile Öde
+            </button>
+
+            <button type="button" className="clearBtn" onClick={clearCart}>
+              Sepeti Temizle
+            </button>
+          </>
         )}
-
-        <div className="heroActions">
-          <button
-            className="goldBtn"
-            type="button"
-            onClick={() => setMusicOn(!musicOn)}
-          >
-            {musicOn ? '🎵 Slow Cafe Müzik Açık' : '🎵 Müziği Aç'}
-          </button>
-
-          <button
-            className="darkBtn"
-            type="button"
-            onClick={() => setLikes(likes + 1)}
-          >
-            ❤️ {likes}
-          </button>
-        </div>
-
-        <div className="musicBox">
-          {musicOn
-            ? 'Modern slow cafe modu aktif.'
-            : 'Telefonlarda otomatik müzik engellenebilir; butonla başlatılır.'}
-        </div>
-      </section>
-
-      <section className="slider">
-        <div className="slide mainSlide">
-          <b>☕ Premium Cafe</b>
-          <span>Pi ile modern sipariş deneyimi</span>
-        </div>
-
-        <div className="slide">
-          <b>🍰 Tatlı Vitrini</b>
-          <span>Günlük taze ürünler</span>
-        </div>
-
-        <div className="slide">
-          <b>🪙 Pi Demo Ödeme</b>
-          <span>Sandbox ödeme test alanı</span>
-        </div>
-      </section>
-
-      <section className="stats">
-        <div>
-          <b>{cart.length}</b>
-          <span>Sepet</span>
-        </div>
-
-        <div>
-          <b>{totalPi.toFixed(2)} Pi</b>
-          <span>Toplam</span>
-        </div>
-
-        <div>
-          <b>314$</b>
-          <span>Pi vitrin</span>
-        </div>
-      </section>
-
-      <section className="campaign">
-        <h2>🔥 Günün Kampanyası</h2>
-        <p>Latte + Pi Pasta menüsü: VIP müşterilere özel demo indirim alanı.</p>
-
-        <button
-          type="button"
-          onClick={() =>
-            addToCart({
-              name: 'VIP Menü',
-              price: 0.18,
-              icon: '👑',
-              note: 'Kampanya'
-            })
-          }
-        >
-          Sepete Ekle
-        </button>
       </section>
 
       <Menu title="🔥 Sıcak İçecekler" items={drinksHot} addToCart={addToCart} />
-      <Menu title="❄️ Soğuk İçecekler" items={drinksCold} addToCart={addToCart} />
+      <Menu title="🧊 Soğuk İçecekler" items={drinksCold} addToCart={addToCart} />
       <Menu title="🍰 Tatlılar" items={desserts} addToCart={addToCart} />
 
       <section className="panel">
-        <h2>🪙 Pi Demo Ödeme</h2>
-        <p>Sepette {cart.length} ürün var. Toplam: {totalPi.toFixed(2)} Pi</p>
-        <p>Test için ürün yoksa otomatik 0.01 Pi demo ödeme açılır.</p>
+        <h2>⭐ Öne Çıkanlar</h2>
 
-        <button
-          type="button"
-          className="payBtn"
-          style={{
-            position: 'relative',
-            zIndex: 999999,
-            pointerEvents: 'auto',
-            touchAction: 'manipulation'
-          }}
-          onClick={startPiPayment}
-          disabled={paying}
-        >
-          {paying ? 'Pi Ödeme Açılıyor...' : 'Pi ile Demo Öde'}
-        </button>
-      </section>
-
-      <section className="admin">
-        <h2>⚙️ Admin Panel</h2>
-
-        <div className="adminGrid">
+        <div className="featureGrid">
           <div>
-            <b>Ürün Ekle</b>
-            <span>Menüye yeni ürün</span>
+            <b>Uygulama İçi Ödeme</b>
+            <span>Pi Browser içinde TestPi akışı</span>
           </div>
 
           <div>
-            <b>Slider Yönet</b>
-            <span>Ana sayfa görseli</span>
+            <b>Uzantı/Domain Ödeme</b>
+            <span>apppiikizlercafe4649.pinet.com desteği</span>
           </div>
 
           <div>
-            <b>Kampanya</b>
-            <span>VIP Pi menüsü</span>
+            <b>Server Callback</b>
+            <span>/api/approve ve /api/complete</span>
           </div>
 
           <div>
@@ -331,6 +263,17 @@ function App() {
             <span>❤️ {c.hearts}</span>
           </div>
         ))}
+      </section>
+
+      <section className="panel">
+        <h2>🧪 Test Notu</h2>
+        <p>
+          Bu sürüm ASLAN 18.6 üstüne ödeme düzeltmesi olarak hazırlanmıştır.
+          Hedef sürüm: <b>ASLAN 18.7</b>.
+        </p>
+        <p>
+          Ödeme zinciri: <b>window.Pi.createPayment → /api/approve → /api/complete</b>
+        </p>
       </section>
     </main>
   )
